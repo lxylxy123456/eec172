@@ -1,0 +1,371 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{verbatim}
+\usepackage{listings}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+
+\lstset{
+	basicstyle=\ttfamily
+}
+
+\begin{comment}
+Hi Class,
+
+Please use the following format from IEEE for your final project report.
+https://www.ieee.org/conferences/publishing/templates.html
+
+The margin, font size are not important: rather your report should:
+-have title
+-two column
+-have abstract, introduction, conclusion and other sections you want to add
+-Have references
+-Your report should have detailed information explaining the motivation,
+ approach, components used and different communications or methodologies they
+ have used.
+
+-Demonstration video: 5 minutes is recommended. If you want to go longer you
+ can.
+
+-All the source code and detailed implementation details on how the experiment
+ could be repeated again. This includes all the schematics and details about
+ other services they might have used. For example, if someone has used api,
+ where to get the api, what things need to be configured on the hosting side or
+ on the user side.
+
+-If using aws lambda, the functions used on lambda services and all the small
+ details.
+
+Houman
+\end{comment}
+
+\title{
+ Implementing Optimized Brick Breaker in CC3200 with OLED and Accelerometer from
+ Scratch
+}
+
+\author{\IEEEauthorblockN{Eric Li (Xiaoyi)}
+\IEEEauthorblockA{\textit{University of California, Davis}\\
+Davis, U.S.A. \\
+ercli@ucdavis.edu}
+}
+
+\maketitle
+
+\begin{abstract}
+We can implement games with a CC3200 Launch Pad. However, a naive implementation
+ will suffer from performance problems, such as limitation on SPI transfer
+ speed. In this paper, I will go though how to implement and optimize a brick
+ breaker game in CC3200. The game will use accelerometer, OLED, and the WiFi
+ module. UART can be optionally used for debugging. 
+\end{abstract}
+
+\begin{IEEEkeywords}
+embedded system, game, OLED
+\end{IEEEkeywords}
+
+\section{Introduction}
+The CC3200 Launch Pad and OLED used for UC Davis EEC 172 instruction can be used
+ to implement simple games. The accelerometer built in to CC3200 can be used
+ as main input, the OLED can be used as main display of the game. The two push
+ buttons in CC3200 can serve as game control (e.g. pause, restart). The CC3200
+ also provides WiFi capability, which allows us to do basic communication with
+ the IoT services for score reporting etc.
+
+\section{Motivation}
+UC Davis EEC 172 labs requires implementing a simple game using OLED and
+ accelerometer. However, students cannot easily see how a real-world embedded
+ system game will face challenges on performance and memory limitations. Thus,
+ I decide to implement a much complex game in order to reveal these
+ difficulties. I will also incorporate knowledge from linear algebra, numerical
+ methods, and computer vision to optimize the game. I will also add features
+ like screen rotation and score fetching in this project.
+
+\section{Approach}
+This project uses the code from EEC 172 labs as templates. In the beginning of
+ this project there are two goals in parallel. The first is to have a proof
+ of concept work showing that all components used are functional and there are
+ no pin conflicts when using all of them together. The second is to develop
+ the logic for the game, which involves mainly software engineering. 
+
+After a naive implementation of the game, I can see performance problems of the
+ game. For example, An analysis in Section \ref{graphic-lib-analysis} shows that
+ the provided graphics library contains severe inefficiencies when drawing
+ characters in the OLED. So optimization on the code should be performed. For
+ example only re-draw updates to a frame and caching the OLED state.
+
+Finally, some additional features like screen rotation and score fetching can
+ be added.
+
+\section{Components Used}
+All components used in this project are provided in EEC 172 Lab. Specifically,
+\begin{itemize}
+\item CC3200 Launch Pad \cite{cc3200ug}
+	\begin{itemize}
+	\item Accelerometer \cite{bma222}
+	\item WiFi module
+	\item UART port (optional)
+	\item Push buttons
+	\item Slow Clock \cite{cc3200trm}
+	\end{itemize}
+\item OEL Display Module (OLED) \cite{oled}
+\end{itemize}
+
+A code similar to lab 4 is developed (not submitted) to prove that all the
+ components can work independently without interfering each other.
+ This becomes the ``proof of concept'' part of this project.
+
+\subsection{Communication Protocols}
+The CC3200 CPU communicates with the Accelerometer using I2C Protocol.
+
+The CC3200 CPU communicates with the OLED using the SPI protocol.
+
+\subsection{Pin Mux Configuration}
+Pin Mux configuration is done using the TI PinMux tool.
+
+\begin{itemize}
+\item GPIO
+	\begin{itemize}
+	\item GPIO09: Pin 64, output, for WiFi LED
+	\item GPIO13: Pin 4, input, for SW3
+	\item GPIO22: Pin 15, input, for SW2
+	\item GPIO25: Pin 21, output, for OLED R
+	\item GPIO28: Pin 18, output, for OLED OC
+	\item GPIO31: Pin 45, output, for OLED DC
+	\end{itemize}
+\item $\text{I}^\text{2}\text{C}$
+	\begin{itemize}
+	\item SCL: Pin 1, for accelerometer
+	\item SDA: Pin 2, for accelerometer
+	\end{itemize}
+\item SPI
+	\begin{itemize}
+	\item CLK: Pin 5, for OLED CL
+	\item MOSI: Pin 7, for OLED SI
+	\end{itemize}
+\item UART
+	\begin{itemize}
+	\item RX: Pin 57, for UART
+	\item TX: Pin 55, for UART
+	\end{itemize}
+\end{itemize}
+
+\subsection{Jumper Wire Connections}
+Extra connections need to be made between the CC3200 Launch Pad and the OLED.
+ 7 Jumper wires are required in total. See Table \ref{tab:jwc} for details.
+
+\begin{table}[htbp]
+\caption{Jumper Wire Connections}
+\begin{center}
+\begin{tabular}{ | c | c | c | c | }\hline
+\multicolumn{3}{|c|}{\textbf{CC3200}} & \textbf{OLED} \\ \hline
+\textbf{Pin} & \textbf{Location} & \textbf{Ref} & \textbf{Pin} \\ \hline
+VCC & J20 &  & + \\ \hline
+GND & J20 &  & G \\ \hline
+P05 & P1 & 7 & CL \\ \hline
+P18 & P2 & 2 & OC \\ \hline
+P45 & P2 & 4 & DC \\ \hline
+P07 & P2 & 6 & SI \\ \hline
+P21 & P2 & 8 & R \\ \hline
+\end{tabular}
+\label{tab:jwc}
+\end{center}
+\end{table}
+
+\section{Game Logic}
+The game main logic is implemented in the \lstinline{project_main()} function.
+ It fetches the maximum score from Amazon AWS Shadow, and then call the
+ \lstinline{game()} function. After game ends it sends the score and displays
+ texts such as ``Game Over''.
+
+The \lstinline{game()} function implements the game. It first initializes all
+ variables such as the location and velocity of the ball and the tray. 
+ The bricks are initialized in two ways: pre-defined pattern or random blocks.
+ It also draws the OLED screen. Then it enters a while loop that iterates once
+ per frame.
+
+\begin{enumerate}
+\item Compute the new location of the ball using Euler method in
+	numerical methods, and compute collision between the board and the tray,
+	the bricks, and the border. This part of the code extensively uses simple
+	linear algebra computations for 2D vectors. The vectors are defined as a C
+	struct called \lstinline{vect_t} and helper functions like
+	\lstinline{normalize} and \lstinline{dot_prod} are written.
+\item Draw the updated OLED screen, which overwrites the original
+	position of the ball, the tray, and the broken bricks, and draws the new
+	positions and the texts (e.g. score).
+\item Check input (accelerometer reading, push button status).
+\item Wait until the correct timing for next frame by polling the Slow Clock.
+\end{enumerate}
+
+\section{Optimizations}
+
+\subsection{Analysis on Provided Graphics Library}
+\label{graphic-lib-analysis}
+
+An analysis to the provided graphics library in EEC 172 Lab 2 shows that there
+ are a number of inefficiencies. One example is the \lstinline{drawChar()}
+ function. A character of size 1 occupies $48$ pixels, and to draw one pixel
+ \lstinline{drawChar()} calls \lstinline{fillRect()} of size 1 $48$ times.
+ Each time \lstinline{fillRect()} need to transfer $9$ bytes to the OLED
+ ($7$ bytes for setting location, $2$ bytes for the color of the rectangle).
+ In total, $9 \times 48 = 432$ bytes need to be transferred for each character.
+
+However, if we just use 7 bytes to set the location and then use
+ $2 \times 48 = 96$ bytes to specify the pattern of the $8 \times 6$ rectangle,
+ only $7 + 96 = 103$ bytes need to be transferred, saving more than $75\%$ of
+ the time. 
+
+\subsection{Rewriting Graphics Library}
+I rewrote the graphics library provided. The only thing I reused is the
+ \lstinline{glcdfont.h}, which defines the fonts. Since most objects in the 
+ game are square-shaped, drawing them is straight forward. The characters are
+ drawn using the method discussed in Section \ref{graphic-lib-analysis}. The
+ ball is drawn by calculating the euclidean distance from the pixel to the
+ center of the ball.
+
+\subsection{Caching OLED memory}
+The OLED is $128 \times 128$, and each pixel is represented by $2$ bytes.
+ So to store the entire OLED memory, only $128 \times 128 \times 2 = 32768$
+ bytes are needed, which is $32$ KiB, which is small enough to be stored
+ in the memory.
+
+The normal way the screen is initialized is: draw the black background, draw
+ each brick, draw the ball, etc. This creates inefficiencies because the same
+ pixel may be drawn multiple times.
+
+Notice that the multiple writes are going through the SPI protocol, which is
+ the bottleneck for performance. So we can cache the OLED state. Specifically,
+ we compute the new OLED screen in memory (i.e. cache), and then flush it to
+ OLED once the computation is done. We can also optimize by only flushing the
+ part that are updated.
+
+In the implementation, the OLED memory is cached as a global variable
+ \lstinline{virt_oled} (in the data section). The \lstinline{render()} function
+ flushes the data to OLED memory. The programmer can specify a rectangular
+ region for \lstinline{render()} so that only the changed part of the screen can
+ be updated.
+
+\section{Extra Features}
+
+\subsection{Score Fetching}
+The game communicates with Amazon AWS service for storing and loading score.
+
+It uses HTTP GET method to get the maximum score from AWS each time the
+ CC3200 Launch Pad starts. There is a simple parser implemented using
+ \lstinline{strstr()} and \lstinline{sscanf()} to extract the maximum score from
+ the HTTP response. 
+
+It uses HTTP POST method to send the current score and updated maximum score to
+ AWS, and the settings in AWS can allow subscribers to receive text messages
+ for score updates.
+
+As a result, the user can see the maximum score in the board.
+
+\subsection{Screen Rotation}
+Using the spirit of the adapter method, caching OLED makes the communication
+ with the OLED only through the \lstinline{render()} function. Thus, we can do
+ simple tweaks to this function in order to support the 4 screen attitudes.
+
+At the start of the game, the accelerometer is read and which attitude to use
+ is computed.
+
+We also need to do some changes to the logic converting the accelerometer
+ reading to the tray speed.
+
+\section{Reproducing}
+Here are the procedures to reproduce this work
+
+\subsection{Requirements}
+\begin{itemize}
+\item CC3200 Launch Pad (CC3200-LAUNCHXL)
+	\begin{itemize}
+	\item USB cable
+	\end{itemize}
+\item Adafruit 1.5'' SSD1351 128x128 RGB OLED
+\item 7 jumper wires
+\item A WiFi access point
+\item An Amazon AWS account
+\item Software such as Code Composer Studio, CCS UniFlash
+\end{itemize}
+
+\subsection{Wire Connections}
+\begin{itemize}
+\item Connect the OLED screen with the CC3200 Launch Pad. See Table \ref{tab:jwc}.
+\item Connect the CC3200 to a computer using the USB cable.
+\end{itemize}
+
+\subsection{Setting Up AWS}
+\label{aws}
+\begin{enumerate}
+\item Go to AWS IoT \cite{aws}, create a Thing. Create certificates for it and
+	activate it. Also download Amazon AWS's Root CA.
+\item Copy the REST API Endpoint host name from the Interact tab of the thing.
+\item Go to IoT Policies and add a policy for allowing
+	\lstinline{iot:GetThingShadow} and \lstinline{iot:UpdateThingShadow}.
+\item Attach this policy to the certificates you have generated.
+\item Use OpenSSL to convert the certificates to der format.
+\item Create an SNS topic and create a subscription for it (with your phone
+	number).
+\item Create an IoT Rule that sends a message as an SNS push notification when
+	the shadow updates.
+\end{enumerate}
+
+\subsection{Updating Code}
+In \lstinline{main.c}, Update macro definitions for \lstinline{DATE},
+ \lstinline{MONTH}, \lstinline{YEAR}, etc. using current date and time.
+ Update \lstinline{SERVER_NAME}, \lstinline{POSTHEADER}, \lstinline{GETHEADER},
+ \lstinline{HOSTHEADER} using AWS settings in Section \ref{aws}.
+
+You also need to update your WiFi access point information in
+ \lstinline{common.h} in the CC3200 SDK.
+
+\subsection{Flashing Program}
+The flashing configuration is saved in \lstinline{project.usf}.
+ You need to change \lstinline{/sys/mcuing.bin} to use the project binary,
+ \lstinline{/cert/rootCA.der}, \lstinline{/cert/client.der},
+ \lstinline{/cert/private.der} to use the files from Section \ref{aws}.
+ After you are done click the ``Program'' button.
+
+\section{Future Work}
+
+\begin{itemize}
+\item Add more features to the game, like animation of brick disappearing.
+\item Restructure the code to allow it easily be ported to other platforms
+	(e.g. computers).
+\item Allow users to select game difficulty.
+\item Allow multiple users to exchange their game scores in AWS (currently
+	if multiple players are playing the game there will be a race condition
+	on score updating).
+\end{itemize}
+
+\section{Conclusion}
+This project implements a realistic brick breaker game from scratch using the
+ CC3200 Launch Pad and OLED provided in UC Davis EEC 172 class. The game makes
+ use of the accelerometer connected through $\text{I}^\text{2}\text{C}$, the
+ OLED connected through SPI, the WiFi module, the UART port, and Slow Clock. It
+ contains game logic and collision detection algorithms, and includes highly
+ optimized code for graphics operations. It also have features like rotating
+ screen and fetching scores.
+
+\section*{Acknowledgment}
+I would like to thank the UC Davis Electrical and Computer Engineering
+ Department for providing equipments (CC3200 Launch Pad, OLED) for this project.
+ I would also like to thank Professor Homayoun and EEC 172 TAs for their
+ instructions.
+
+\begin{thebibliography}{00}
+\bibitem{cc3200ug} Texas Instruments, ``CC3200 SimpleLink Wi-Fi and Internet of Things Solution With MCU LaunchPad Hardware User's Guide,'' June 2014, Revised March 2020. % https://www.ti.com/lit/ug/swru372c/swru372c.pdf
+\bibitem{bma222} Bosch Sensortec, ``BMA 222 Digital, triaxial acceleration sensor Data sheet,'' May 2012. % https://media.digikey.com/pdf/Data%20Sheets/Bosch/BMA222.pdf
+\bibitem{cc3200trm} Texas Instruments, ``CC3200 SimpleLink Wi-Fi and Internet-of-Things Solution, a Single Chip Wireless MCU Technical Reference Manual,'' June 2014, Revised May 2018. % https://www.ti.com/lit/ug/swru367d/swru367d.pdf
+\bibitem{oled} Univision Technology Inc, ``OEL Display Module Product Specification,'' October 2008. % https://datasheetspdf.com/pdf/670326/UnivisionTechnology/UG-2828GDEDF11/1
+\bibitem{aws} Amazon Web Services, ``AWS IoT Developer Guide,'' April 2020.
+\end{thebibliography}
+
+\end{document}
