@@ -36,6 +36,10 @@ C version, game over
 
 ![c18.png](screenshots/c18.png)
 
+C version demo video
+
+[![5VP_zU0lu0s](http://img.youtube.com/vi/5VP_zU0lu0s/0.jpg)](http://www.youtube.com/watch?v=5VP_zU0lu0s)
+
 Python version, during game
 
 ![py5.png](screenshots/py5.png)
