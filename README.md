@@ -29,14 +29,18 @@ Eric Li
 
 ## Gallery
 C version, during game
+
 ![c17.png](screenshots/c17.png)
 
 C version, game over
+
 ![c18.png](screenshots/c18.png)
 
 Python version, during game
+
 ![py5.png](screenshots/py5.png)
 
 CC3200 version video
+
 [![uDkXkYqYVf0](http://img.youtube.com/vi/uDkXkYqYVf0/0.jpg)](http://www.youtube.com/watch?v=uDkXkYqYVf0)
 
