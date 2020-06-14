@@ -14,12 +14,12 @@ Eric Li
 	* Build the executable with `make main.out` (see `Makefile`).
 * `main.py` contains Python version of this project (requires pygame).
 * Video demos on Youtube:
-	* https://youtu.be/uDkXkYqYVf0: used for EEC 100 submission.
+	* https://youtu.be/uDkXkYqYVf0: demo on CC3200, used for EEC 100 submission.
 		* https://youtu.be/5abHdbAJjIE: raw video.
 		* `video.sh`: script to edit the raw video.
 
 ## Notes on C and Python Versions
-* Move your mouse horizontally to control the speed of the tray.
+* Move your mouse horizontally to control the velocity of the tray.
 * SW2 = `2` on keyboard, SW3 = `3` on keyboard.
 	* In C version I hardcoded the key code as `K_2 = 11` etc. If your keyboard
 	  layout is different than mine you may have to change this value.
