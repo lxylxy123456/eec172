@@ -10,6 +10,10 @@ HEADERS = $(wildcard *.h)
 $(TARGETS): %.out: %.c $(HEADERS)
 	$(CC) $< -o $@ $(CCFLAGS)
 
+report.pdf: report.tex IEEEtran.cls
+	pdflatex report.tex
+	pdflatex report.tex
+
 clean:
-	rm -rf $(TARGETS)
+	rm -rf $(TARGETS) report.pdf
 
